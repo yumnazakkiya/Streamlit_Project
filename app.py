@@ -1,139 +1,358 @@
-import streamlit as st
+# Import Required Libraries
 import pandas as pd
+import numpy as np
 import pickle
 import time
+import streamlit as st
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 from PIL import Image
 
-st.set_page_config(page_title="Halaman Modelling", layout="wide")
-st.write("""
-# Welcome to my machine learning dashboard
+# Page Configuration
+st.set_page_config(layout="wide", page_title="Capstone Project DQLab", page_icon=":heart:")
+st.sidebar.title("Navigation")
+nav = st.sidebar.selectbox("Go to", ("Home", "Dataset", "Exploratory Data Analysis","Modelling", "Prediction", "About"))
 
-This dashboard created by : [@abelkristanto](https://www.linkedin.com/in/abelkristanto/)
-""")
+# Dataset Page
+url = "https://storage.googleapis.com/dqlab-dataset/heart_disease.csv"
+df = pd.read_csv(url)
 
-add_selectitem = st.sidebar.selectbox("Want to open about?", ("Iris species!", "Heart Disease!"))
-
-def iris():
-    st.write("""
-    This app predicts the **Iris Species**
+# Function Heart Disease Prediction         
+def user_input_manual():
+    st.sidebar.header("Manual Input")
+    age = st.sidebar.slider("Age", 0, 100, 25)
     
-    Data obtained from the [iris dataset](https://www.kaggle.com/uciml/iris) by UCIML. 
-    """)
-    st.sidebar.header('User Input Features:')
-
-    # === PERBAIKAN: DEFINISI FUNGSI DIPINDAHKAN KELUAR DARI ELSE ===
-    def user_input_features():
-        st.sidebar.header('Input Manual')
-        SepalLengthCm = st.sidebar.slider('Sepal Length (cm)', 4.3,10.0,6.5)
-        SepalWidthCm = st.sidebar.slider('Sepal Width (cm)', 2.0,5.0,3.3)
-        PetalLengthCm = st.sidebar.slider('Petal Length (cm)', 1.0,9.0,4.0)
-        PetalWidthCm = st.sidebar.slider('Petal Width (cm)', 0.1,5.0,1.4)
-        data = {'SepalLengthCm': SepalLengthCm,
-                'SepalWidthCm': SepalWidthCm,
-                'PetalLengthCm': PetalLengthCm,
-                'PetalWidthCm': PetalWidthCm}
-        features = pd.DataFrame(data, index=[0])
-        return features
-    # =============================================================
-
-    # Collects user input features into dataframe
-    uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
+    # Nyeri Dada (cp)
+    cp = st.sidebar.selectbox("Chest Pain Type", ("Typical Angina", "Atypical Angina", "Non-anginal Pain", "Asymptomatic"))
+    if cp == "Typical Angina":
+        cp = 1
+    elif cp == "Atypical Angina":
+        cp = 2
+    elif cp == "Non-anginal Pain":
+        cp = 3
+    elif cp == "Asymptomatic":
+        cp = 4
+        
+    thalach = st.sidebar.slider("Maximum Heart Rate Achieved", 0, 200, 100)
     
-    if uploaded_file is not None:
-        input_df = pd.read_csv(uploaded_file)
+    # Kemiringan (slope)
+    slope = st.sidebar.selectbox("Slope", ("Upsloping", "Flat", "Downsloping"))
+    if slope == "Upsloping":
+        slope = 1
+    elif slope == "Flat":
+        slope = 2
+    elif slope == "Downsloping":
+        slope = 3
+        
+    ca = st.sidebar.slider("Number of Major Vessels", 0, 4, 0)
+    oldpeak = st.sidebar.slider("ST Depression Induced by Exercise Relative to Rest", 0.0, 10.0, 0.0)
+    
+    # Angina (exang)
+    exang = st.sidebar.selectbox("Exercise Induced Angina", ("Yes", "No"))
+    if exang == "Yes":
+        exang = 1
+    elif exang == "No":
+        exang = 0
+        
+    # Thal
+    thal = st.sidebar.selectbox("Thal", ("Normal", "Fixed Defect", "Reversable Defect"))
+    if thal == "Normal":
+        thal = 1
+    elif thal == "Fixed Defect":
+        thal = 2
+    elif thal == "Reversable Defect":
+        thal = 3
+        
+    # Jenis Kelamin (sex)
+    sex = st.sidebar.selectbox("Sex", ("Male", "Female"))
+    if sex == "Male":
+        sex = 1
     else:
-        # PANGGILAN FUNGSI DIBIARKAN DI BAWAH BLOK IF
-        pass
-    
-    input_df = user_input_features()
-    img = Image.open("iris.JPG")
-    st.image(img, width=500)
-    
-    if st.sidebar.button('Predict!'):
-        df = input_df
-        st.write(df)
-        with open("generate_iris.pkl", 'rb') as file: 
-            loaded_model = pickle.load(file)
-        prediction = loaded_model.predict(df)
-        result = ['Iris-setosa' if prediction == 0 else ('Iris-versicolor' if prediction == 1 else 'Iris-virginica')]
-        st.subheader('Prediction: ')
-        output = str(result[0])
-        with st.spinner('Wait for it...'):
-            time.sleep(4)
-            st.success(f"Prediction of this app is {output}")
-            
+        sex = 0
+
+    data = {'cp': cp,
+            'thalach': thalach,
+            'slope': slope,
+            'oldpeak': oldpeak,
+            'exang': exang,
+            'ca': ca,
+            'thal': thal,
+            'sex': sex,
+            'age': age}
+    features = pd.DataFrame(data, index=[0])
+    return features
+
+# --- FUNGSI PREDIKSI JANTUNG ---
 def heart():
     st.write("""
-    This app predicts the **Heart Disease**
-    
-    Data obtained from the [Heart Disease dataset](https://archive.ics.uci.edu/dataset/45/heart+disease) by UCIML. 
-    """)
+        This app predicts the **Heart Disease**
+        Data obtained from the [Heart Disease dataset](https://archive.ics.uci.edu/dataset/45/heart+disease) by UCIML. 
+        """)
     st.sidebar.header('User Input Features:')
-
-    # === PERBAIKAN: DEFINISI FUNGSI DIPINDAHKAN KELUAR DARI ELSE ===
-    def user_input_features():
-        st.sidebar.header('Manual Input')
-        cp = st.sidebar.slider('Chest pain type', 1,4,2)
-        if cp == 1.0:
-            wcp = "Nyeri dada tipe angina"
-        elif cp == 2.0:
-            wcp = "Nyeri dada tipe nyeri tidak stabil"
-        elif cp == 3.0:
-            wcp = "Nyeri dada tipe nyeri tidak stabil yang parah"
-        else:
-            wcp = "Nyeri dada yang tidak terkait dengan masalah jantung"
-        st.sidebar.write("Jenis nyeri dada yang dirasakan oleh pasien", wcp)
-        thalach = st.sidebar.slider("Maximum heart rate achieved", 71, 202, 80)
-        slope = st.sidebar.slider("Kemiringan segmen ST pada elektrokardiogram (EKG)", 0, 2, 1)
-        oldpeak = st.sidebar.slider("Seberapa banyak ST segmen menurun atau depresi", 0.0, 6.2, 1.0)
-        exang = st.sidebar.slider("Exercise induced angina", 0, 1, 1)
-        ca = st.sidebar.slider("Number of major vessels", 0, 3, 1)
-        thal = st.sidebar.slider("Hasil tes thalium", 1, 3, 1)
-        sex = st.sidebar.selectbox("Jenis Kelamin", ('Perempuan', 'Pria'))
-        if sex == "Perempuan":
-            sex = 0
-        else:
-            sex = 1 
-        age = st.sidebar.slider("Usia", 29, 77, 30)
-        data = {'cp': cp,
-                'thalach': thalach,
-                'slope': slope,
-                'oldpeak': oldpeak,
-                'exang': exang,
-                'ca':ca,
-                'thal':thal,
-                'sex': sex,
-                'age':age}
-        features = pd.DataFrame(data, index=[0])
-        return features
-    # =============================================================
-    
-    # Collects user input features into dataframe
     uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
+    
     if uploaded_file is not None:
         input_df = pd.read_csv(uploaded_file)
     else:
-        # PANGGILAN FUNGSI DIBIARKAN DI BAWAH BLOK IF
-        pass
-        
-    input_df = user_input_features()
-    img = Image.open("heart-disease.jpg")
-    st.image(img, width=500)
-    
-    if st.sidebar.button('Predict!'):
-        df = input_df
-        st.write(df)
-        with open("generatel.pkl", 'rb') as file: 
-            loaded_model = pickle.load(file)
-        prediction = loaded_model.predict(df) 
-        result = ['No Heart Disease' if prediction == 0 else 'Yes Heart Disease']
-        st.subheader('Prediction: ')
-        output = str(result[0])
-        with st.spinner('Wait for it...'):
-            time.sleep(4)
-            st.success(f"Prediction of this app is {output}")
+        input_df = user_input_manual()
 
-if add_selectitem == "Iris species!":
-    iris()
-elif add_selectitem == "Heart Disease!":
+    # Tampilkan Gambar
+    try:
+        st.image('heart-disease.jpg', width=700)
+    except:
+        st.warning("Gambar 'heart-disease.jpg' tidak ditemukan.")
+
+    if st.sidebar.button("GO!"):
+        st.write("### Data Input:", input_df)
+        try:
+            with open('generatel.pkl', 'rb') as file:
+                model = pickle.load(file)
+        
+        # .values digunakan agar model hanya menerima angka tanpa nama kolom
+            prediction = model.predict(input_df.values)
+            result = 'Heart Disease' if prediction[0] == 1 else 'No Heart Disease'
+            
+            with st.spinner('Wait for it...'):
+                time.sleep(3)
+                if prediction[0] == 1:
+                    st.error(f'This patient has {result}')
+                else:
+                    st.success(f'This patient has {result}')
+                st.balloons()
+        except Exception as e:
+            st.error(f"Error: {e}. Pastikan file 'generatel.pkl' ada di folder yang sama.")
+    # =============================================================
+    # Home Page
+if nav == "Home":
+    st.title("Capstone Project DQLab")
+    st.write('''
+    **Machine Learning & AI Track**
+    
+    Hallo, saya [Zakkiya Ashhabul Yumna](https://##), saya adalah seorang mahasiswa di
+    salah satu perguruan tinggi di Indonesia. Saya mengambil jurusan Teknik Informatika. Saya mengikuti kelas Machine 
+    Learning & AI di DQLab Academy. Ini adalah capstone project saya.
+    ''')
+    st.image("https://www.endocrine.org/-/media/endocrine/images/patient-engagement-webpage/condition-page-images/cardiovascular-disease/cardio_disease_t2d_pe_1796x943.jpg",
+             width=700, caption="www.endocrine.org")
+
+    st.write('''
+    **Project Overview**
+    
+    Cardiovascular disease (CVDs) atau penyakit jantung merupakan penyebab kematian nomor satu secara global dengan 17,9 
+    juta kasus kematian setiap tahunnya. Penyakit jantung disebabkan oleh hipertensi, obesitas, dan gaya hidup yang 
+    tidak sehat. Deteksi dini penyakit jantung perlu dilakukan pada kelompok risiko tinggi agar dapat segera mendapatkan 
+    penanganan dan pencegahan. Project ini bertujuan untuk memprediksi apakah seseorang memiliki penyakit jantung atau 
+    tidak berdasarkan beberapa kriteria tertentu. Dataset yang digunakan adalah dataset penyakit jantung dari [UCI 
+    Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/heart+Disease).
+    ''')
+
+    st.write('''
+    **Project Objective**
+    
+    Tujuan dari project ini adalah untuk memprediksi apakah seseorang memiliki penyakit jantung atau tidak berdasarkan
+    beberapa kriteria tertentu.
+    ''')
+
+elif nav == 'Dataset':
+    st.title("Dataset")
+    st.write('''
+    **Dataset Overview**
+    
+    Dataset yang digunakan adalah dataset penyakit jantung dari [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/heart+Disease).
+    Dataset ini memiliki 303 baris dan 14 kolom. Kolom target adalah kolom `target` yang menunjukkan apakah seseorang
+    memiliki penyakit jantung atau tidak. Jika memiliki penyakit jantung, maka nilai kolom `target` adalah 1, jika tidak
+    memiliki penyakit jantung, maka nilai kolom `target` adalah 0.
+    ''')
+    st.write('''
+    **Dataset Description**
+    
+    Berikut adalah deskripsi dari dataset yang digunakan.
+    
+    1. `age` : usia dalam tahun (umur)
+    2. `sex` : jenis kelamin (1 = laki-laki; 0 = perempuan)
+    3. `cp` : tipe nyeri dada
+        - 1: typical angina
+        - 2: atypical angina
+        - 3: non-anginal pain
+        - 4: asymptomatic
+    4. `trestbps` : tekanan darah istirahat (dalam mm Hg saat masuk ke rumah sakit)
+    5. `chol` : serum kolestoral dalam mg/dl
+    6. `fbs` : gula darah puasa > 120 mg/dl (1 = true; 0 = false)
+    7. `restecg` : hasil elektrokardiografi istirahat
+        - 0: normal
+        - 1: memiliki ST-T wave abnormalitas (T wave inversions and/or ST elevation or depression of > 0.05 mV)
+        - 2: menunjukkan kemungkinan atau pasti hipertrofi ventrikel kiri menurut kriteria Estes
+    8. `thalach` : detak jantung maksimum yang dicapai
+    9. `exang` : angina yang diinduksi oleh olahraga (1 = yes; 0 = no)
+    10. `oldpeak` : ST depression yang disebabkan oleh olahraga relatif terhadap istirahat
+    11. `slope` : kemiringan segmen ST latihan puncak
+        - 1: naik
+        - 2: datar
+        - 3: turun
+    12. `ca` : jumlah pembuluh darah utama (0-3) yang diwarnai dengan flourosopy
+    13. `thal` : 3 = normal; 6 = cacat tetap; 7 = cacat yang dapat dibalik
+    14. `target` : memiliki penyakit jantung atau tidak (1 = yes; 0 = no)
+    ''')
+    #=============================================================
+    # show dataset
+    st.write('''
+    **Show Dataset**
+    ''')
+    st.dataframe(df.head())
+
+    # show dataset shape
+    st.write(f'''**Dataset Shape:** {df.shape}''')
+
+    # show dataset description
+    st.write('''
+    **Dataset Description**
+    ''')
+    st.dataframe(df.describe())
+    #=============================================================
+    # show dataset count visualization
+    st.write('''
+    **Dataset Count Visualization**
+    ''')
+    views = st.selectbox("Select Visualization", ("", "Target", "Age", "Gender"))
+    if views == "Target":
+        st.bar_chart(df.target.value_counts())
+        st.write('''
+        `Target` adalah kolom yang menunjukkan apakah seseorang memiliki penyakit jantung atau tidak. Jika memiliki penyakit
+        jantung, maka nilai kolom `target` adalah 1, jika tidak memiliki penyakit jantung, maka nilai kolom `target` adalah 0.
+        Berdasarkan visualisasi di atas, dapat dilihat bahwa jumlah orang yang memiliki penyakit jantung lebih banyak daripada
+        yang tidak memiliki penyakit jantung sejumlah 526 orang dibandingkan 499 orang.
+        ''')
+    elif views == "Age":
+        st.bar_chart(df['age'].value_counts())
+        st.write('''
+        Berdasarkan visualisasi di atas, dapat dilihat bahwa jumlah orang yang memiliki penyakit jantung paling banyak berada
+        pada usia 58 tahun sebanyak 68 orang. Sedangkan jumlah orang yang tidak memiliki penyakit jantung paling banyak berada
+        rentang 74-76 tahun sebanyak 9 orang.''')
+    elif views == "Gender":
+        # 1. Hitung dulu datanya
+        sex_counts = df['sex'].map({1: 'Pria', 0: 'Wanita'}).value_counts()
+        
+        # 2. Masukkan angka ke variabel pria dan wanita
+        pria = sex_counts.get('Pria', 0)    # <--- TAMBAHKAN INI
+        wanita = sex_counts.get('Wanita', 0) # <--- TAMBAHKAN INI
+        
+        # 3. Tampilkan grafik
+        st.bar_chart(sex_counts)
+        
+        # 4. Baru tampilkan teksnya
+        st.write(f'''
+        Berdasarkan visualisasi di atas, terdapat **{pria}** pasien Pria dan **{wanita}** pasien Wanita.
+        Data ini menunjukkan bahwa jumlah responden pria jauh lebih banyak dibandingkan wanita dalam dataset ini.
+        ''')
+
+elif nav == "Exploratory Data Analysis":
+    st.header("Exploratory Data Analysis")
+    st.write('''
+    **Data Cleaning**
+    
+    Pada tahap ini, dilakukan pengecekan terhadap data apakah terdapat data yang kosong atau tidak. Jika terdapat data yang
+    kosong, maka data tersebut akan dihapus.
+    ''')
+    st.write('''
+    Informasi yang akan kita gali adalah feature pada kesalahan penulisan:
+    1. Feature `CA`: Memiliki 5 nilai dari rentang 0-4, maka dari itu nilai 4 diubah menjadi NaN (karena seharusnya tidak ada)
+    2. Feature `thal`: Memiliki 4 nilai dari rentang 0-3, maka dari itu nulai 0 diubah menjadi NaN (karena seharusnya tidak ada)
+    ''')
+    views = st.radio("Show Data", ("CA", "Thal"))
+    if views == "CA":
+        st.write('''
+        **Feature CA**
+        
+        Feature CA memiliki 5 nilai dari rentang 0-4, maka dari itu nilai 4 diubah menjadi NaN (karena seharusnya tidak ada)
+        ''')
+        st.dataframe(df.ca.value_counts().to_frame().transpose())
+        st.write('''
+        **Show Data After Cleaning**
+        ''')
+        st.dataframe(df.ca.replace(0, np.nan).value_counts().to_frame().transpose())
+    elif views == "Thal":
+        st.write('''
+        **Feature Thal**
+        
+        Feature Thal memiliki 4 nilai dari rentang 0-3, maka dari itu nulai 0 diubah menjadi NaN (karena seharusnya tidak ada)
+        ''')
+        st.dataframe(df.thal.value_counts().to_frame().transpose())
+        st.write('''
+        **Show Data After Cleaning**
+        ''')
+        st.dataframe(df.thal.replace(0, np.nan).value_counts().to_frame().transpose())
+
+elif nav == "Modelling":
+    st.header("Modelling")
+    var = st.select_slider("Select Model", ("Before Tuning", "After Tuning", "ROC-AUC", "Kesimpulan"))
+    if var == "Before Tuning":
+        accuracy_score = {
+            'Logistic Regression': 0.85,
+            'Decision Tree': 0.78,
+            'Random Forest': 0.87,
+            'MLP Classifier': 0.87,
+        }
+        st.write('''
+        **Model Before Tuning**
+        
+        Berikut adalah hasil akurasi dari model sebelum dilakukan tuning.
+        ''')
+        st.dataframe(pd.DataFrame(accuracy_score.items(), columns=['Model', 'Accuracy Score']))
+        st.write('''
+        Berdasarkan hasil akurasi dari model sebelum dilakukan tuning, dapat dilihat bahwa model dengan akurasi tertinggi
+        adalah Random Forest dan MLP Classifier dengan akurasi 0.87.
+        ''')
+
+    elif var == "After Tuning":
+        accuracy_score = {
+            'Logistic Regression': 0.87,
+            'Decision Tree': 0.83,
+            'Random Forest': 0.88,
+            'MLP Classifier': 0.89,
+        }
+        st.write('''
+        **Model After Tuning**
+        
+        Berikut adalah hasil akurasi dari model setelah dilakukan tuning.
+        ''')
+        st.dataframe(pd.DataFrame(accuracy_score.items(), columns=['Model', 'Accuracy Score']))
+        st.write('''
+        Berdasarkan hasil akurasi dari model setelah dilakukan tuning, dapat dilihat bahwa model dengan akurasi tertinggi
+        adalah MLP Classifier dengan akurasi 0.89.
+        ''')
+
+    elif var == "Kesimpulan":
+        st.write('''
+        **Kesimpulan**
+        
+        Berdasarkan hasil akurasi dari model sebelum dan setelah dilakukan tuning, dapat disimpulkan bahwa model dengan
+        akurasi tertinggi adalah MLP Classifier dengan akurasi 0.89. Jika kamu mendownload model ini, maka kamu akan mendapatkan
+        di link berikut ini [Download Model](https://drive.google.com/file/d/1-8Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z/view?usp=sharing).
+        ''')
+
+elif nav == 'Prediction':
+    st.header("My Apps")
     heart()
+
+elif nav == "About":
+    st.title("About Me")
+    st.image("https://avatars.githubusercontent.com/u/59464302?v=4", width=200)
+    st.write('''
+    **ZAKKIYA ASHHABUL YUMNA**
+    
+    Saya adalah seorang mahasiswa di salah satu perguruan tinggi di Indonesia. Saya mengambil jurusan Teknik Informatika.
+    Saya mengikuti kelas Machine Learning & AI di DQLab Academy. Ini adalah capstone project saya.
+    ''')
+    st.write('''
+    **Contact Me**
+    
+    - [LinkedIn](https://www.linkedin.com/in/zakkiya-yumna/)
+    - [Github](https://github.com/yumnazakkiya/)
+    ''')
+
+    
