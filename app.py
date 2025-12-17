@@ -133,7 +133,7 @@ if nav == "Home":
     st.write('''
     **Machine Learning & AI Track**
     
-    Hallo, saya [Zakkiya Ashhabul Yumna](https://##), saya adalah seorang mahasiswa di
+    Hallo, saya [Zakkiya Ashhabul Yumna](https://www.linkedin.com/in/zakkiya-yumna/), saya adalah seorang mahasiswa di
     salah satu perguruan tinggi di Indonesia. Saya mengambil jurusan Teknik Informatika. Saya mengikuti kelas Machine 
     Learning & AI di DQLab Academy. Ini adalah capstone project saya.
     ''')
