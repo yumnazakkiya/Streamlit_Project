@@ -15,8 +15,58 @@ from PIL import Image
 
 # Page Configuration
 st.set_page_config(layout="wide", page_title="Capstone Project DQLab", page_icon=":heart:")
-st.sidebar.title("Navigation")
-nav = st.sidebar.selectbox("Go to", ("Home", "Dataset", "Exploratory Data Analysis","Modelling", "Prediction", "About"))
+# --- TAMBAHKAN KODE CSS DI BAWAH INI ---
+st.markdown("""
+    <style>
+    
+    [data-testid="stSidebar"] {
+        background-color: #1E93AB;
+    }
+    
+    [data-testid="stSidebar"] .stText, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p {
+        color: white !important;
+    }
+
+    div.stButton > button {
+        width: 100%;
+        border-radius: 5px;
+        height: 3em;
+        background-color: transparent;
+        color: white;
+        border: 1px solid white;
+        text-align: left;
+    }
+    div.stButton > button:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border: 1px solid white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+# ---------------------------------------
+# st.sidebar.title("Navigation")
+# nav = st.sidebar.selectbox("Go to", ("Home", "Dataset", "Exploratory Data Analysis","Modelling", "Prediction", "About"))
+
+# --- 1. INISIALISASI SESSION STATE (Taruh di sini) ---
+if 'page' not in st.session_state:
+    st.session_state.page = 'Home'
+
+# --- 2. DEFINISI FUNGSI (Agar tidak Error NameError) ---
+def set_page(name):
+    st.session_state.page = name
+    
+# Membuat tombol satu per satu
+st.sidebar.button("🏠 Home", on_click=set_page, args=('Home',))
+st.sidebar.button("📊 Dataset", on_click=set_page, args=('Dataset',))
+st.sidebar.button("🔍 EDA", on_click=set_page, args=('Exploratory Data Analysis',))
+st.sidebar.button("🤖 Modelling", on_click=set_page, args=('Modelling',))
+st.sidebar.button("❤️ Prediction", on_click=set_page, args=('Prediction',))
+st.sidebar.button("ℹ️ About", on_click=set_page, args=('About',))
 
 # Dataset Page
 url = "https://storage.googleapis.com/dqlab-dataset/heart_disease.csv"
@@ -128,7 +178,7 @@ def heart():
             st.error(f"Error: {e}. Pastikan file 'generatel.pkl' ada di folder yang sama.")
     # =============================================================
     # Home Page
-if nav == "Home":
+if st.session_state.page == "Home":
     st.title("Capstone Project DQLab")
     st.write('''
     **Machine Learning & AI Track**
@@ -158,7 +208,7 @@ if nav == "Home":
     beberapa kriteria tertentu.
     ''')
 
-elif nav == 'Dataset':
+elif st.session_state.page == 'Dataset':
     st.title("Dataset")
     st.write('''
     **Dataset Overview**
@@ -249,8 +299,9 @@ elif nav == 'Dataset':
         Berdasarkan visualisasi di atas, terdapat **{pria}** pasien Pria dan **{wanita}** pasien Wanita.
         Data ini menunjukkan bahwa jumlah responden pria jauh lebih banyak dibandingkan wanita dalam dataset ini.
         ''')
+        
 
-elif nav == "Exploratory Data Analysis":
+elif st.session_state.page == "Exploratory Data Analysis":
     st.header("Exploratory Data Analysis")
     st.write('''
     **Data Cleaning**
@@ -287,7 +338,7 @@ elif nav == "Exploratory Data Analysis":
         ''')
         st.dataframe(df.thal.replace(0, np.nan).value_counts().to_frame().transpose())
 
-elif nav == "Modelling":
+elif st.session_state.page == "Modelling":
     st.header("Modelling")
     var = st.select_slider("Select Model", ("Before Tuning", "After Tuning", "ROC-AUC", "Kesimpulan"))
     if var == "Before Tuning":
@@ -335,11 +386,11 @@ elif nav == "Modelling":
         di link berikut ini [Download Model](https://drive.google.com/file/d/1-8Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z3Z/view?usp=sharing).
         ''')
 
-elif nav == 'Prediction':
+elif st.session_state.page == 'Prediction':
     st.header("My Apps")
     heart()
 
-elif nav == "About":
+elif st.session_state.page == "About":
     st.title("About Me")
     st.image("https://avatars.githubusercontent.com/u/59464302?v=4", width=200)
     st.write('''
